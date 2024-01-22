@@ -1,0 +1,155 @@
+[Solana]
+    Chain = "Solana"
+    NetworkAddress = "https://api.devnet.solana.com" # a network address
+    WSSNetworkAddress = "wss://api.devnet.solana.com" # a network address
+    BridgeProgramAddress = "DPdETSJD8SxEmydaqarwqWm9Y6v7PHsagejzWsu6ZXge" # the sol address for the bridge contract
+    SafeProgramAddress = "8YA47aGrgcm3gfKKDN798mVj5gyzqaZ9wJd6k3ecMBav"
+    SolanaPrivateKeyFile = "keys/solana.json"
+    PrivateKeyFile = "keys/ethereum.sk" # the path to the file containing the relayer eth private key
+    GasLimitBase = 350000
+    GasLimitForEach = 30000
+    IntervalToWaitForTransferInSeconds = 600 #10 minutes
+    MaxRetriesOnQuorumReached = 3
+    MaxBlocksDelta = 10
+
+[MultiversX]
+    NetworkAddress = "https://devnet-gateway.multiversx.com" # the network address
+    NetworkApiAddress = "https://devnet-api.multiversx.com" # the network address
+    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqd53xrnvvxpq7atlgasl7f0c4jzwgqeqes0vq2wv2g2" # the multiversx address for the bridge contract
+    PrivateKeyFile = "keys/multiversx.pem" # the path to the pem file containing the relayer multiversx wallet
+    IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
+    MaxRetriesOnQuorumReached = 3
+    MaxRetriesOnWasTransferProposed = 3
+    ProxyCacherExpirationSeconds = 600 # the caching time in seconds
+
+    # valid options for ProxyRestAPIEntityType are `observer` and `proxy`. Any other value will trigger an error.
+    # `observer` is useful when querying an observer, directly and `proxy` is useful when querying a squad's proxy
+    ProxyRestAPIEntityType = "proxy"
+    ProxyFinalityCheck = false
+    ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
+    [MultiversX.GasMap]
+        Sign = 8000000
+        ProposeTransferBase = 11000000
+        ProposeTransferForEach = 5500000
+        ProposeStatusBase = 10000000
+        ProposeStatusForEach = 7000000
+        PerformActionBase = 40000000
+        PerformActionForEach = 5500000
+
+[P2P]
+    Port = "10010"
+    InitialPeerList = []
+    ProtocolID = "/erd/relay/1.0.0"
+    [AntifloodConfig]
+        Enabled = true
+        NumConcurrentResolverJobs = 50
+        [Antiflood.FastReacting]
+            IntervalInSeconds = 1
+            ReservedPercent   = 20.0
+            [Antiflood.FastReacting.PeerMaxInput]
+                BaseMessagesPerInterval  = 10
+                TotalSizePerInterval = 1048576 #1MB/s
+                [Antiflood.FastReacting.PeerMaxInput.IncreaseFactor]
+                    Threshold = 10 #if consensus size will exceed this value, then
+                    Factor = 1.0   #increase the base value with [factor*consensus size]
+            [Antiflood.FastReacting.BlackList]
+                ThresholdNumMessagesPerInterval = 70
+                ThresholdSizePerInterval = 2097154 #2MB/s
+                NumFloodingRounds = 10
+                PeerBanDurationInSeconds = 300
+
+        [Antiflood.SlowReacting]
+            IntervalInSeconds = 30
+            ReservedPercent   = 20.0
+            [Antiflood.SlowReacting.PeerMaxInput]
+                BaseMessagesPerInterval = 400
+                TotalSizePerInterval = 10485760 #10MB/interval
+                [Antiflood.SlowReacting.PeerMaxInput.IncreaseFactor]
+                    Threshold = 10 #if consensus size will exceed this value, then
+                    Factor = 0.0   #increase the base value with [factor*consensus size]
+            [Antiflood.SlowReacting.BlackList]
+                ThresholdNumMessagesPerInterval = 800
+                ThresholdSizePerInterval = 20971540 #20MB/interval
+                NumFloodingRounds = 2
+                PeerBanDurationInSeconds = 3600
+
+        [Antiflood.OutOfSpecs]
+            IntervalInSeconds = 1
+            ReservedPercent   = 0.0
+            [Antiflood.OutOfSpecs.PeerMaxInput]
+                BaseMessagesPerInterval = 140
+                TotalSizePerInterval = 4194304 #4MB/s
+                [Antiflood.OutOfSpecs.PeerMaxInput.IncreaseFactor]
+                    Threshold = 0 #if consensus size will exceed this value, then
+                    Factor = 0.0     #increase the base value with [factor*consensus size]
+            [Antiflood.OutOfSpecs.BlackList]
+                ThresholdNumMessagesPerInterval = 200
+                ThresholdSizePerInterval = 6291456 #6MB/s
+                NumFloodingRounds = 2
+                PeerBanDurationInSeconds = 3600
+
+        [Antiflood.PeerMaxOutput]
+            BaseMessagesPerInterval  = 5
+            TotalSizePerInterval     = 524288 #512KB/s
+
+        [Antiflood.Cache]
+            Name = "Antiflood"
+            Capacity = 7000
+            Type = "LRU"
+        [Antiflood.Topic]
+            DefaultMaxMessagesPerSec = 300 # default number of messages per interval for a topic
+            MaxMessages = [{ Topic = "SolanaToMultiversX_join", NumMessagesPerSec = 100 },
+                           { Topic = "SolanaToMultiversX_sign", NumMessagesPerSec = 100 }]
+
+[Relayer]
+    [Relayer.Marshalizer]
+        Type = "gogo protobuf"
+        SizeCheckDelta = 10
+    [Relayer.RoleProvider]
+        UsePolling = true
+        PollingIntervalInMillis = 60000 # 1 minute
+    [Relayer.StatusMetricsStorage]
+        [Relayer.StatusMetricsStorage.Cache]
+            Name = "StatusMetricsStorage"
+            Capacity = 1000
+            Type = "LRU"
+        [Relayer.StatusMetricsStorage.DB]
+            FilePath = "StatusMetricsStorageDB"
+            Type = "LvlDBSerial"
+            BatchDelaySeconds = 2
+            MaxBatchSize = 100
+            MaxOpenFiles = 10
+
+[StateMachine]
+    [StateMachine.SolanaToMultiversX]
+        StepDurationInMillis = 12000 #12 seconds
+        IntervalForLeaderInSeconds = 120 #2 minutes
+
+    [StateMachine.MultiversXToSolana]
+        StepDurationInMillis = 12000 #12 seconds
+        IntervalForLeaderInSeconds = 720 #12 minutes
+
+[Logs]
+    LogFileLifeSpanInSec = 86400 # 24h
+    LogFileLifeSpanInMB = 1024 # 1GB
+
+[Antiflood]
+    Enabled = true
+    [Antiflood.WebServer]
+            # SimultaneousRequests represents the number of concurrent requests accepted by the web server
+            # this is a global throttler that acts on all http connections regardless of the originating source
+            SimultaneousRequests = 100
+            # SameSourceRequests defines how many requests are allowed from the same source in the specified
+            # time frame (SameSourceResetIntervalInSec)
+            SameSourceRequests = 10000
+            # SameSourceResetIntervalInSec time frame between counter reset, in seconds
+            SameSourceResetIntervalInSec = 1
+
+[BatchValidator]
+    Enabled = false
+    URL = "https://devnet-bridge-api.multiversx.com/validateBatch" # batch validator URL.
+    RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the batch validation request
+
+[PeersRatingConfig]
+    TopRatedCacheCapacity = 5000
+    BadRatedCacheCapacity = 5000
