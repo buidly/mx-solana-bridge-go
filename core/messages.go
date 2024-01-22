@@ -17,7 +17,7 @@ func (msg *SignedMessage) UniqueID() string {
 	return fmt.Sprintf("%s%s", string(msg.PublicKeyBytes), string(msg.Payload))
 }
 
-// EthereumSignature is the message used when the relayers will send an ethereum signature
+// EthereumSignature is the message used when the relayers will send an sol signature
 type EthereumSignature struct {
 	Signature   []byte `json:"sig"`
 	MessageHash []byte `json:"msg"`

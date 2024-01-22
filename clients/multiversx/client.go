@@ -3,17 +3,14 @@ package multiversx
 import (
 	"context"
 	"fmt"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	"math"
 	"math/big"
 	"reflect"
+	"sort"
 	"sync"
 	"time"
 
-	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/config"
-	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
-	"github.com/multiversx/mx-bridge-eth-go/core/converters"
-	"github.com/multiversx/mx-chain-core-go/core/check"
 	crypto "github.com/multiversx/mx-chain-crypto-go"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519/singlesig"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -21,6 +18,11 @@ import (
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/multiversx/mx-sdk-go/interactors/nonceHandlerV1"
+	"github.com/multiversx/mx-solana-bridge-go/bridges/solanaMultiversX"
+	"github.com/multiversx/mx-solana-bridge-go/clients"
+	"github.com/multiversx/mx-solana-bridge-go/config"
+	bridgeCore "github.com/multiversx/mx-solana-bridge-go/core"
+	"github.com/multiversx/mx-solana-bridge-go/core/converters"
 )
 
 const (
@@ -30,13 +32,14 @@ const (
 	performActionFuncName    = "performAction"
 	minAllowedDelta          = 1
 
-	multiversXDataGetterLogId = "MultiversXEth-MultiversXDataGetter"
+	multiversXDataGetterLogId = "MultiversXSol-MultiversXDataGetter"
 )
 
 // ClientArgs represents the argument for the NewClient constructor function
 type ClientArgs struct {
 	GasMapConfig                 config.MultiversXGasMapConfig
-	Proxy                        Proxy
+	Proxy                        clients.Proxy
+	DecimalDiffCalculator        clients.DecimalDiffCalculator
 	Log                          logger.Logger
 	RelayerPrivateKey            crypto.PrivateKey
 	MultisigContractAddress      core.AddressHandler
@@ -50,6 +53,7 @@ type ClientArgs struct {
 // client represents the MultiversX Client implementation
 type client struct {
 	*mxClientDataGetter
+	decimalDiffCalculator     clients.DecimalDiffCalculator
 	txHandler                 txHandler
 	tokensMapper              TokensMapper
 	relayerPublicKey          crypto.PublicKey
@@ -103,6 +107,7 @@ func NewClient(args ClientArgs) (*client, error) {
 	}
 
 	c := &client{
+		decimalDiffCalculator: args.DecimalDiffCalculator,
 		txHandler: &transactionHandler{
 			proxy:                   args.Proxy,
 			relayerAddress:          relayerAddress,
@@ -126,7 +131,7 @@ func NewClient(args ClientArgs) (*client, error) {
 
 	c.log.Info("NewMultiversXClient",
 		"relayer address", relayerAddress.AddressAsBech32String(),
-		"safe contract address", args.MultisigContractAddress.AddressAsBech32String())
+		"multisig contract address", args.MultisigContractAddress.AddressAsBech32String())
 
 	return c, nil
 }
@@ -139,7 +144,7 @@ func checkArgs(args ClientArgs) error {
 		return clients.ErrNilPrivateKey
 	}
 	if check.IfNil(args.MultisigContractAddress) {
-		return fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
+		return fmt.Errorf("%w for the BridgeProgramAddress argument", errNilAddressHandler)
 	}
 	if check.IfNil(args.Log) {
 		return clients.ErrNilLogger
@@ -215,6 +220,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 	}
 
 	cachedTokens := make(map[string][]byte)
+	cachedTokensDecimalDifference := make(map[string]int)
 	transferIndex := 0
 	for i := 1; i < dataLen; i += numFieldsForTransaction {
 		// blockNonce is the i-th element, let's ignore it for now
@@ -235,6 +241,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 			Amount:           amount,
 		}
 
+		//here
 		storedConvertedTokenBytes, exists := cachedTokens[deposit.DisplayableToken]
 		if !exists {
 			deposit.ConvertedTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.TokenBytes)
@@ -246,11 +253,29 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 			deposit.ConvertedTokenBytes = storedConvertedTokenBytes
 		}
 
+		decimalDifference, exists := cachedTokensDecimalDifference[deposit.DisplayableToken]
+		if !exists {
+			decimalDifference, err = c.decimalDiffCalculator.GetDecimalDifference(ctx, deposit.ConvertedTokenBytes, deposit.TokenBytes)
+			if err != nil {
+				return nil, err
+			}
+			cachedTokensDecimalDifference[deposit.DisplayableToken] = decimalDifference
+		}
+		amountWithDecimals := big.NewFloat(0).Mul(
+			big.NewFloat(0).SetInt(deposit.Amount),
+			big.NewFloat(0).SetFloat64(math.Pow10(decimalDifference)),
+		)
+		deposit.AmountAdjustedToDecimals, _ = amountWithDecimals.Int(nil)
+
 		batch.Deposits = append(batch.Deposits, deposit)
 		transferIndex++
 	}
 
 	batch.Statuses = make([]byte, len(batch.Deposits))
+
+	sort.Slice(batch.Deposits, func(i, j int) bool {
+		return batch.Deposits[i].Nonce < batch.Deposits[j].Nonce
+	})
 
 	c.log.Debug("created batch " + batch.String())
 
@@ -303,7 +328,7 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 		txBuilder.ArgBytes(dt.FromBytes).
 			ArgBytes(dt.ToBytes).
 			ArgBytes(dt.ConvertedTokenBytes).
-			ArgBigInt(dt.Amount).
+			ArgBigInt(dt.AmountAdjustedToDecimals).
 			ArgInt64(int64(dt.Nonce))
 	}
 
@@ -375,7 +400,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	currentNonce, err := c.GetCurrentNonce(ctx)
 	if err != nil {
-		c.setStatusForAvailabilityCheck(ethmultiversx.Unavailable, err.Error(), currentNonce)
+		c.setStatusForAvailabilityCheck(solmultiversx.Unavailable, err.Error(), currentNonce)
 
 		return err
 	}
@@ -390,12 +415,12 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	if c.retriesAvailabilityCheck > c.allowDelta {
 		message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck)
-		c.setStatusForAvailabilityCheck(ethmultiversx.Unavailable, message, currentNonce)
+		c.setStatusForAvailabilityCheck(solmultiversx.Unavailable, message, currentNonce)
 
 		return nil
 	}
 
-	c.setStatusForAvailabilityCheck(ethmultiversx.Available, "", currentNonce)
+	c.setStatusForAvailabilityCheck(solmultiversx.Available, "", currentNonce)
 
 	return nil
 }
@@ -404,7 +429,7 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 	c.retriesAvailabilityCheck++
 }
 
-func (c *client) setStatusForAvailabilityCheck(status ethmultiversx.ClientStatus, message string, nonce uint64) {
+func (c *client) setStatusForAvailabilityCheck(status solmultiversx.ClientStatus, message string, nonce uint64) {
 	c.statusHandler.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, status.String())
 	c.statusHandler.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, message)
 	c.statusHandler.SetIntMetric(bridgeCore.MetricLastBlockNonce, int(nonce))

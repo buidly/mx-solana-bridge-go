@@ -37,7 +37,7 @@ paths:
           required: true
           description: The wanted metric
           type: string
-          enum: [MultiversXToEth, EthToMultiversX, multiversx-client, eth-client]
+          enum: [MultiversXToSol, SolToMultiversX, multiversx-client, sol-client]
       responses:
         '200':
           description: Information of the requested metric

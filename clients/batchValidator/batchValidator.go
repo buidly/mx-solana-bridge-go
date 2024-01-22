@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-solana-bridge-go/clients"
+	"github.com/multiversx/mx-solana-bridge-go/clients/chain"
 )
 
 const minRequestTime = time.Millisecond
@@ -51,12 +51,12 @@ func NewBatchValidator(args ArgsBatchValidator) (*batchValidator, error) {
 
 func checkArgs(args ArgsBatchValidator) error {
 	switch args.SourceChain {
-	case chain.Ethereum, chain.Bsc, chain.Polygon, chain.MultiversX:
+	case chain.Solana, chain.MultiversX:
 	default:
 		return fmt.Errorf("%w: %q", clients.ErrInvalidValue, args.SourceChain)
 	}
 	switch args.DestinationChain {
-	case chain.Ethereum, chain.Bsc, chain.Polygon, chain.MultiversX:
+	case chain.Solana, chain.MultiversX:
 	default:
 		return fmt.Errorf("%w: %q", clients.ErrInvalidValue, args.DestinationChain)
 	}

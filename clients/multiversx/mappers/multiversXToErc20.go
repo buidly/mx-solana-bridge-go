@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-solana-bridge-go/clients"
 )
 
 type multiversXToErc20 struct {
@@ -27,7 +27,7 @@ func NewMultiversXToErc20Mapper(dg DataGetter) (*multiversXToErc20, error) {
 // ConvertToken will return erd token id given a specific erc20 address
 func (mapper *multiversXToErc20) ConvertToken(ctx context.Context, sourceBytes []byte) ([]byte, error) {
 
-	response, err := mapper.dg.GetERC20AddressForTokenId(ctx, sourceBytes)
+	response, err := mapper.dg.GetSftAddressForTokenId(ctx, sourceBytes)
 	if err != nil {
 		return nil, err
 	}

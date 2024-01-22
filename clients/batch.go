@@ -12,17 +12,21 @@ var log = logger.GetOrCreate("clients")
 
 // TransferBatch is the transfer batch structure agnostic of any chain implementation
 type TransferBatch struct {
-	ID       uint64             `json:"batchId"`
-	Deposits []*DepositTransfer `json:"deposits"`
-	Statuses []byte             `json:"statuses"`
+	ID                    uint64             `json:"batchId"`
+	Deposits              []*DepositTransfer `json:"deposits"`
+	Statuses              []byte             `json:"statuses"`
+	LastUpdatedSlotNumber uint64             `json:"lastUpdatedSlotNumber"`
+	SlotNumber            uint64             `json:"slotNumber"`
 }
 
 // Clone will deep clone the current TransferBatch instance
 func (tb *TransferBatch) Clone() *TransferBatch {
 	cloned := &TransferBatch{
-		ID:       tb.ID,
-		Deposits: make([]*DepositTransfer, 0, len(tb.Deposits)),
-		Statuses: make([]byte, len(tb.Statuses)),
+		ID:                    tb.ID,
+		Deposits:              make([]*DepositTransfer, 0, len(tb.Deposits)),
+		Statuses:              make([]byte, len(tb.Statuses)),
+		LastUpdatedSlotNumber: tb.LastUpdatedSlotNumber,
+		SlotNumber:            tb.SlotNumber,
 	}
 
 	for _, dt := range tb.Deposits {
@@ -65,21 +69,22 @@ func (tb *TransferBatch) ResolveNewDeposits(newNumDeposits int) {
 
 // DepositTransfer is the deposit transfer structure agnostic of any chain implementation
 type DepositTransfer struct {
-	Nonce               uint64   `json:"nonce"`
-	ToBytes             []byte   `json:"-"`
-	DisplayableTo       string   `json:"to"`
-	FromBytes           []byte   `json:"-"`
-	DisplayableFrom     string   `json:"from"`
-	TokenBytes          []byte   `json:"-"`
-	ConvertedTokenBytes []byte   `json:"-"`
-	DisplayableToken    string   `json:"token"`
-	Amount              *big.Int `json:"amount"`
+	Nonce                    uint64   `json:"nonce"`
+	ToBytes                  []byte   `json:"-"`
+	DisplayableTo            string   `json:"to"`
+	FromBytes                []byte   `json:"-"`
+	DisplayableFrom          string   `json:"from"`
+	TokenBytes               []byte   `json:"-"`
+	ConvertedTokenBytes      []byte   `json:"-"`
+	DisplayableToken         string   `json:"token"`
+	Amount                   *big.Int `json:"amount"`
+	AmountAdjustedToDecimals *big.Int `json:"AmountAdjustedToDecimals"`
 }
 
 // String will convert the deposit transfer to a string
 func (dt *DepositTransfer) String() string {
-	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, deposit nonce: %d",
-		dt.DisplayableTo, dt.DisplayableFrom, dt.DisplayableToken, dt.Amount, dt.Nonce)
+	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, AmountAdjustedToDecimals: %v, deposit nonce: %d",
+		dt.DisplayableTo, dt.DisplayableFrom, dt.DisplayableToken, dt.Amount, dt.AmountAdjustedToDecimals, dt.Nonce)
 }
 
 // Clone will deep clone the current DepositTransfer instance
@@ -102,6 +107,9 @@ func (dt *DepositTransfer) Clone() *DepositTransfer {
 	copy(cloned.ConvertedTokenBytes, dt.ConvertedTokenBytes)
 	if dt.Amount != nil {
 		cloned.Amount.Set(dt.Amount)
+	}
+	if dt.AmountAdjustedToDecimals != nil {
+		cloned.AmountAdjustedToDecimals.Set(dt.AmountAdjustedToDecimals)
 	}
 
 	return cloned

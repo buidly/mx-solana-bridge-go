@@ -1,15 +1,6 @@
 package core
 
 const (
-	// EthFastGasPrice represents the fast gas price value
-	EthFastGasPrice EthGasPriceSelector = "FastGasPrice"
-
-	// EthSafeGasPrice represents the safe gas price value
-	EthSafeGasPrice EthGasPriceSelector = "SafeGasPrice"
-
-	// EthProposeGasPrice represents the proposed gas price value
-	EthProposeGasPrice EthGasPriceSelector = "ProposeGasPrice"
-
 	// WebServerOffString represents the constant used to switch off the web server
 	WebServerOffString = "off"
 )
@@ -24,21 +15,21 @@ const (
 	// MetricCurrentStateMachineStep represents the metric used to store the current running machine step
 	MetricCurrentStateMachineStep = "current state machine step"
 
-	// MetricNumEthClientRequests represents the metric used to count the number of ethereum client requests
-	MetricNumEthClientRequests = "num ethereum client requests"
+	// MetricNumSolClientRequests represents the metric used to count the number of sol client requests
+	MetricNumSolClientRequests = "num sol client requests"
 
-	// MetricNumEthClientTransactions represents the metric used to count the number of ethereum sent transactions
-	MetricNumEthClientTransactions = "num ethereum client transactions"
+	// MetricNumSolClientTransactions represents the metric used to count the number of sol sent transactions
+	MetricNumSolClientTransactions = "num sol client transactions"
 
-	// MetricLastQueriedEthereumBlockNumber represents the metric used to store the last ethereum block number that was
-	// fetched from the ethereum client
-	MetricLastQueriedEthereumBlockNumber = "ethereum last queried block number"
+	// MetricLastQueriedSolanaBlockNumber represents the metric used to store the last sol block number that was
+	// fetched from the sol client
+	MetricLastQueriedSolanaBlockNumber = "sol last queried block number"
 
-	// MetricEthereumClientStatus represents the metric used to store the status of the ethereum client
-	MetricEthereumClientStatus = "ethereum client status"
+	// MetricSolanaClientStatus represents the metric used to store the status of the sol client
+	MetricSolanaClientStatus = "sol client status"
 
-	// MetricLastEthereumClientError represents the metric used to store the last encountered error from the ethereum client
-	MetricLastEthereumClientError = "ethereum client last encountered error"
+	// MetricLastSolanaClientError represents the metric used to store the last encountered error from the sol client
+	MetricLastSolanaClientError = "sol client last encountered error"
 
 	// MetricLastQueriedMultiversXBlockNumber represents the metric used to store the last MultiversX block number that was
 	// fetched from the MultiversX client
@@ -61,13 +52,13 @@ const (
 )
 
 // PersistedMetrics represents the array of metrics that should be persisted
-var PersistedMetrics = []string{MetricNumBatches, MetricNumEthClientRequests, MetricNumEthClientTransactions,
-	MetricLastQueriedEthereumBlockNumber, MetricLastQueriedMultiversXBlockNumber, MetricEthereumClientStatus,
-	MetricMultiversXClientStatus, MetricLastEthereumClientError, MetricLastMultiversXClientError, MetricLastBlockNonce}
+var PersistedMetrics = []string{MetricNumBatches, MetricNumSolClientRequests, MetricNumSolClientTransactions,
+	MetricLastQueriedSolanaBlockNumber, MetricLastQueriedMultiversXBlockNumber, MetricSolanaClientStatus,
+	MetricMultiversXClientStatus, MetricLastSolanaClientError, MetricLastMultiversXClientError, MetricLastBlockNonce}
 
 const (
-	// EthClientStatusHandlerName is the Ethereum client status handler name
-	EthClientStatusHandlerName = "eth-client"
+	// SolClientStatusHandlerName is the Solana client status handler name
+	SolClientStatusHandlerName = "sol-client"
 
 	// MultiversXClientStatusHandlerName is the MultiversX client status handler name
 	MultiversXClientStatusHandlerName = "multiversx-client"

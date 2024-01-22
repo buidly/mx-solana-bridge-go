@@ -1,8 +1,8 @@
 package status
 
 import (
-	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-chain-core-go/marshal"
+	"github.com/multiversx/mx-solana-bridge-go/core"
 )
 
 // only json marshaller is supported because we used maps

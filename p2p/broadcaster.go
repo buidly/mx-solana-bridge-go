@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/multiversx/mx-bridge-eth-go/core"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/marshal"
@@ -15,6 +14,7 @@ import (
 	"github.com/multiversx/mx-chain-go/process/throttle/antiflood/factory"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/data"
+	"github.com/multiversx/mx-solana-bridge-go/core"
 )
 
 const (
@@ -186,37 +186,39 @@ func (b *broadcaster) processJoinMessage(message p2p.MessageP2P) {
 	}
 }
 
-func (b *broadcaster) getEthereumSignature(msg *core.SignedMessage) (*core.EthereumSignature, error) {
-	ethSignature := &core.EthereumSignature{}
-	err := b.marshalizer.Unmarshal(ethSignature, msg.Payload)
+func (b *broadcaster) getEthereumSignature(msg *core.SignedMessage) ([]*core.EthereumSignature, error) {
+	ethSignatures := make([]*core.EthereumSignature, 0)
+	err := b.marshalizer.Unmarshal(&ethSignatures, msg.Payload)
 	if err != nil {
 		return nil, err
 	}
 
-	err = b.signatureProcessor.VerifyEthSignature(ethSignature.Signature, ethSignature.MessageHash)
-	if err != nil {
-		return nil, err
+	for _, ethSignature := range ethSignatures {
+		err = b.signatureProcessor.VerifyEthSignature(ethSignature.Signature, ethSignature.MessageHash)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return ethSignature, nil
+	return ethSignatures, nil
 }
 
 func (b *broadcaster) processSignMessage(msg *core.SignedMessage) {
-	ethSignature, err := b.getEthereumSignature(msg)
+	ethSignatures, err := b.getEthereumSignature(msg)
 	if err != nil {
 		b.log.Debug("received message does not contain a valid signature", "error", err)
 		return
 	}
 
-	b.notifyClients(msg, ethSignature)
+	b.notifyClients(msg, ethSignatures)
 }
 
-func (b *broadcaster) notifyClients(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+func (b *broadcaster) notifyClients(msg *core.SignedMessage, ethMsgs []*core.EthereumSignature) {
 	b.mutClients.RLock()
 	defer b.mutClients.RUnlock()
 
 	for _, client := range b.clients {
-		client.ProcessNewMessage(msg, ethMsg)
+		client.ProcessNewMessage(msg, ethMsgs)
 	}
 }
 
@@ -257,13 +259,8 @@ func (b *broadcaster) sendSignedMessageToPeer(msg *core.SignedMessage, peerId ch
 
 // BroadcastSignature will send the provided signature as payload in a wrapped signed message to the other peers.
 // It will broadcast the message to all available peers
-func (b *broadcaster) BroadcastSignature(signature []byte, messageHash []byte) {
-	ethSig := &core.EthereumSignature{
-		Signature:   signature,
-		MessageHash: messageHash,
-	}
-
-	payload, err := b.marshalizer.Marshal(ethSig)
+func (b *broadcaster) BroadcastSignature(ethSigs []*core.EthereumSignature) {
+	payload, err := b.marshalizer.Marshal(ethSigs)
 	if err != nil {
 		b.log.Error("error creating signature payload", "error", err)
 	}

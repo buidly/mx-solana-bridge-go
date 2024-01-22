@@ -6,6 +6,9 @@ var (
 	// ErrNilLogger signals that a nil logger was provided
 	ErrNilLogger = errors.New("nil logger")
 
+	SolanaTokenDataNilError = errors.New("nil Solana token data")
+	MvxTokenDataNilError    = errors.New("nil Mvx token data")
+
 	// ErrNilDataGetter signals that a nil data getter was provided
 	ErrNilDataGetter = errors.New("nil data getter")
 

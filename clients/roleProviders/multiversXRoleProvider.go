@@ -9,11 +9,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
+	"github.com/multiversx/mx-solana-bridge-go/clients"
 )
 
 // ArgsMultiversXRoleProvider is the argument for the MultiversX role provider constructor
@@ -84,7 +84,6 @@ func (erp *multiversXRoleProvider) processResults(results [][]byte) error {
 	erp.mut.Lock()
 	erp.whitelistedAddresses = temporaryMap
 	erp.mut.Unlock()
-
 	erp.log.Debug("fetched whitelisted addresses:\n" + strings.Join(currentList, "\n"))
 
 	return nil

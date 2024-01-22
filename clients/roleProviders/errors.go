@@ -2,8 +2,8 @@ package roleproviders
 
 import "errors"
 
-// ErrNilEthereumChainInteractor signals that a nil Ethereum chain interactor was provided
-var ErrNilEthereumChainInteractor = errors.New("nil Ethereum chain interactor")
+// ErrNilSolanaRpcClient signals that a nil Solana chain interactor was provided
+var ErrNilSolanaRpcClient = errors.New("nil Solana RPC client")
 
 // ErrAddressIsNotWhitelisted signals that the address is not whitelisted
 var ErrAddressIsNotWhitelisted = errors.New("address is not whitelisted")

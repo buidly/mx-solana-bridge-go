@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-chain-go/config"
+	"github.com/multiversx/mx-solana-bridge-go/clients/chain"
 )
 
 // Configs is a holder for the relayer configuration parameters
@@ -14,7 +14,7 @@ type Configs struct {
 
 // Config general configuration struct
 type Config struct {
-	Eth               EthereumConfig
+	Solana            SolanaConfig
 	MultiversX        MultiversXConfig
 	P2P               ConfigP2P
 	StateMachine      map[string]ConfigStateMachine
@@ -25,33 +25,21 @@ type Config struct {
 	PeersRatingConfig PeersRatingConfig
 }
 
-// EthereumConfig represents the Ethereum Config parameters
-type EthereumConfig struct {
+// SolanaConfig represents the Solana Config parameters
+type SolanaConfig struct {
 	Chain                              chain.Chain
 	NetworkAddress                     string
-	MultisigContractAddress            string
-	SafeContractAddress                string
+	WSSNetworkAddress                  string
+	BridgeProgramAddress               string
+	SafeProgramAddress                 string
+	SolanaPrivateKeyFile               string
 	PrivateKeyFile                     string
 	IntervalToResendTxsInSeconds       uint64
 	GasLimitBase                       uint64
 	GasLimitForEach                    uint64
-	GasStation                         GasStationConfig
 	MaxRetriesOnQuorumReached          uint64
 	IntervalToWaitForTransferInSeconds uint64
 	MaxBlocksDelta                     uint64
-}
-
-// GasStationConfig represents the configuration for the gas station handler
-type GasStationConfig struct {
-	Enabled                    bool
-	URL                        string
-	PollingIntervalInSeconds   int
-	RequestRetryDelayInSeconds int
-	MaxFetchRetries            int
-	RequestTimeInSeconds       int
-	MaximumAllowedGasPrice     int
-	GasPriceSelector           string
-	GasPriceMultiplier         int
 }
 
 // ConfigP2P configuration for the P2P communication
@@ -145,6 +133,7 @@ type RoleProviderConfig struct {
 // MultiversXConfig represents the MultiversX Config parameters
 type MultiversXConfig struct {
 	NetworkAddress                  string
+	NetworkApiAddress               string
 	MultisigContractAddress         string
 	PrivateKeyFile                  string
 	IntervalToResendTxsInSeconds    uint64

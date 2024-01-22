@@ -3,10 +3,10 @@ package factory
 import (
 	"io"
 
-	"github.com/multiversx/mx-bridge-eth-go/api/gin"
-	"github.com/multiversx/mx-bridge-eth-go/config"
-	"github.com/multiversx/mx-bridge-eth-go/core"
-	"github.com/multiversx/mx-bridge-eth-go/facade"
+	"github.com/multiversx/mx-solana-bridge-go/api/gin"
+	"github.com/multiversx/mx-solana-bridge-go/config"
+	"github.com/multiversx/mx-solana-bridge-go/core"
+	"github.com/multiversx/mx-solana-bridge-go/facade"
 )
 
 // StartWebServer creates and starts a web server able to respond with the metrics holder information

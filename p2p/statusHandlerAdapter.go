@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-solana-bridge-go/core"
 )
 
 // ArgsStatusHandlerAdapter is the DTO used to construct a new instance of type statusHandlerAdapter

@@ -3,9 +3,9 @@ package status
 import (
 	"sync"
 
-	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-solana-bridge-go/core"
 )
 
 var log = logger.GetOrCreate("status")

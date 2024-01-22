@@ -17,9 +17,6 @@ type Step interface {
 	IsInterfaceNil() bool
 }
 
-// EthGasPriceSelector defines the ethereum gas price selector
-type EthGasPriceSelector string
-
 // Timer defines operations related to time
 type Timer interface {
 	NowUnix() int64
@@ -40,7 +37,7 @@ type AddressConverter interface {
 // when new messages arrive. It also should be able to respond with any stored messages it might
 // have.
 type BroadcastClient interface {
-	ProcessNewMessage(msg *SignedMessage, ethMsg *EthereumSignature)
+	ProcessNewMessage(msg *SignedMessage, ethMsg []*EthereumSignature)
 	AllStoredSignatures() []*SignedMessage
 	IsInterfaceNil() bool
 }

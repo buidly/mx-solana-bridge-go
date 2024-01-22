@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-solana-bridge-go/core"
 )
 
 type metricsHolder struct {

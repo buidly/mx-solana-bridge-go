@@ -2,6 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/rpc"
+	"github.com/multiversx/mx-solana-bridge-go/clients"
+	"github.com/multiversx/mx-solana-bridge-go/clients/sol/contract/bridge"
+	"github.com/multiversx/mx-solana-bridge-go/clients/sol/contract/tokens_safe"
 	"os"
 	"os/signal"
 	"path"
@@ -9,16 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	ethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
-	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/wrappers"
-	"github.com/multiversx/mx-bridge-eth-go/config"
-	"github.com/multiversx/mx-bridge-eth-go/core"
-	"github.com/multiversx/mx-bridge-eth-go/factory"
-	"github.com/multiversx/mx-bridge-eth-go/p2p"
-	"github.com/multiversx/mx-bridge-eth-go/status"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/typeConverters/uint64ByteSlice"
@@ -41,13 +36,19 @@ import (
 	"github.com/multiversx/mx-chain-p2p-go/libp2p"
 	"github.com/multiversx/mx-sdk-go/blockchain"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
+	"github.com/multiversx/mx-solana-bridge-go/clients/sol"
+	"github.com/multiversx/mx-solana-bridge-go/config"
+	"github.com/multiversx/mx-solana-bridge-go/core"
+	"github.com/multiversx/mx-solana-bridge-go/factory"
+	"github.com/multiversx/mx-solana-bridge-go/p2p"
+	"github.com/multiversx/mx-solana-bridge-go/status"
 	"github.com/urfave/cli"
 )
 
 const (
 	filePathPlaceholder      = "[path]"
 	defaultLogsPath          = "logs"
-	logFilePrefix            = "multiversx-eth-bridge"
+	logFilePrefix            = "multiversx-sol-bridge"
 	p2pPeerNetworkDiscoverer = "optimized"
 	nilListSharderType       = "NilListSharder"
 	disabledWatcher          = "disabled"
@@ -134,11 +135,11 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	metricsHolder := status.NewMetricsHolder()
-	ethClientStatusHandler, err := status.NewStatusHandler(core.EthClientStatusHandlerName, statusStorer)
+	solClientStatusHandler, err := status.NewStatusHandler(core.SolClientStatusHandlerName, statusStorer)
 	if err != nil {
 		return err
 	}
-	err = metricsHolder.AddStatusHandler(ethClientStatusHandler)
+	err = metricsHolder.AddStatusHandler(solClientStatusHandler)
 	if err != nil {
 		return err
 	}
@@ -156,36 +157,47 @@ func startRelay(ctx *cli.Context, version string) error {
 		return fmt.Errorf("empty MultiversX.NetworkAddress in config file")
 	}
 
-	argsProxy := blockchain.ArgsProxy{
-		ProxyURL:            cfg.MultiversX.NetworkAddress,
-		SameScState:         false,
-		ShouldBeSynced:      false,
-		FinalityCheck:       cfg.MultiversX.ProxyFinalityCheck,
-		AllowedDeltaToFinal: cfg.MultiversX.ProxyMaxNoncesDelta,
-		CacheExpirationTime: time.Second * time.Duration(cfg.MultiversX.ProxyCacherExpirationSeconds),
-		EntityType:          sdkCore.RestAPIEntityType(cfg.MultiversX.ProxyRestAPIEntityType),
-	}
+	argsProxy := getMvxProxyArgs(cfg, cfg.MultiversX.NetworkAddress)
 	proxy, err := blockchain.NewProxy(argsProxy)
 	if err != nil {
 		return err
 	}
 
-	ethClient, err := ethclient.Dial(cfg.Eth.NetworkAddress)
+	solanaRpcClient := rpc.New(cfg.Solana.NetworkAddress)
+
+	apiProxy, err := blockchain.NewProxy(getMvxProxyArgs(cfg, cfg.MultiversX.NetworkApiAddress))
 	if err != nil {
 		return err
 	}
+	decimalDiffCalculator := clients.NewDecimalDiffCalculator(clients.DecimalDiffCalculatorArgs{
+		SolanaRpcClient: solanaRpcClient,
+		MvxProxy:        apiProxy,
+	})
 
-	bridgeEthAddress := ethCommon.HexToAddress(cfg.Eth.MultisigContractAddress)
-	multiSigInstance, err := contract.NewBridge(bridgeEthAddress, ethClient)
+	bridgeProgramAddress, err := solana.PublicKeyFromBase58(cfg.Solana.BridgeProgramAddress)
 	if err != nil {
 		return err
 	}
+	bridge.SetProgramID(bridgeProgramAddress)
 
-	argsContractsHolder := ethereum.ArgsErc20SafeContractsHolder{
-		EthClient:              ethClient,
-		EthClientStatusHandler: ethClientStatusHandler,
+	safeProgramAddress, err := solana.PublicKeyFromBase58(cfg.Solana.SafeProgramAddress)
+
+	relayerPrivateKey, err := solana.PrivateKeyFromSolanaKeygenFile(cfg.Solana.SolanaPrivateKeyFile)
+	if err != nil {
+		return err
 	}
-	erc20ContractsHolder, err := ethereum.NewErc20SafeContractsHolder(argsContractsHolder)
+	tokens_safe.SetProgramID(safeProgramAddress)
+
+	programAddresses := sol.ProgramAddresses{
+		BridgeProgramAddress:     bridgeProgramAddress,
+		TokensSafeProgramAddress: safeProgramAddress,
+	}
+
+	argsContractsHolder := sol.ArgsSftTokenProgram{
+		SolanaRPC:                 solanaRpcClient,
+		SolanaClientStatusHandler: solClientStatusHandler,
+	}
+	sftTokenProgram, err := sol.NewSftTokenProgram(argsContractsHolder)
 	if err != nil {
 		return err
 	}
@@ -206,17 +218,6 @@ func startRelay(ctx *cli.Context, version string) error {
 		FlagsConfig:     flagsConfig,
 	}
 
-	argsClientWrapper := wrappers.ArgsEthereumChainWrapper{
-		StatusHandler:    ethClientStatusHandler,
-		MultiSigContract: multiSigInstance,
-		BlockchainClient: ethClient,
-	}
-
-	clientWrapper, err := wrappers.NewEthereumChainWrapper(argsClientWrapper)
-	if err != nil {
-		return err
-	}
-
 	var appStatusHandlers []chainCore.AppStatusHandler
 	statusMetrics := statusHandler.NewStatusMetrics()
 	appStatusHandlers = append(appStatusHandlers, statusMetrics)
@@ -231,21 +232,26 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	args := factory.ArgsEthereumToMultiversXBridge{
+	args := factory.ArgsSolanaToMultiversXBridge{
+		SolStatusHandler:              solClientStatusHandler,
 		Configs:                       configs,
 		Messenger:                     messenger,
 		StatusStorer:                  statusStorer,
 		Proxy:                         proxy,
-		Erc20ContractsHolder:          erc20ContractsHolder,
-		ClientWrapper:                 clientWrapper,
+		DecimalDiffCalculator:         decimalDiffCalculator,
+		RelayerPrivateKey:             relayerPrivateKey,
+		SftTokenProgram:               sftTokenProgram,
+		SolanaRpcClient:               solanaRpcClient,
+		SolanaWssClientAddress:        cfg.Solana.WSSNetworkAddress,
 		TimeForBootstrap:              timeForBootstrap,
 		TimeBeforeRepeatJoin:          timeBeforeRepeatJoin,
 		MetricsHolder:                 metricsHolder,
 		AppStatusHandler:              appStatusHandler,
 		MultiversXClientStatusHandler: multiversXClientStatusHandler,
+		ProgramAddresses:              programAddresses,
 	}
 
-	ethToMultiversXComponents, err := factory.NewEthMultiversXBridgeComponents(args)
+	solToMultiversXComponents, err := factory.NewSolanaMultiversXBridgeComponents(args)
 	if err != nil {
 		return err
 	}
@@ -257,7 +263,7 @@ func startRelay(ctx *cli.Context, version string) error {
 
 	log.Info("Starting relay")
 
-	err = ethToMultiversXComponents.Start()
+	err = solToMultiversXComponents.Start()
 	if err != nil {
 		return err
 	}
@@ -270,7 +276,7 @@ func startRelay(ctx *cli.Context, version string) error {
 	log.Info("application closing, calling Close on all subcomponents...")
 
 	var lastErr error
-	err = ethToMultiversXComponents.Close()
+	err = solToMultiversXComponents.Close()
 	if err != nil {
 		lastErr = err
 	}
@@ -281,6 +287,18 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	return lastErr
+}
+
+func getMvxProxyArgs(cfg config.Config, url string) blockchain.ArgsProxy {
+	return blockchain.ArgsProxy{
+		ProxyURL:            url,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       cfg.MultiversX.ProxyFinalityCheck,
+		AllowedDeltaToFinal: cfg.MultiversX.ProxyMaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.MultiversX.ProxyCacherExpirationSeconds),
+		EntityType:          sdkCore.RestAPIEntityType(cfg.MultiversX.ProxyRestAPIEntityType),
+	}
 }
 
 func loadConfig(filepath string) (config.Config, error) {

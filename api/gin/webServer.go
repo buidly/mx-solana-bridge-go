@@ -11,17 +11,17 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-	apiErrors "github.com/multiversx/mx-bridge-eth-go/api/errors"
-	"github.com/multiversx/mx-bridge-eth-go/api/groups"
-	"github.com/multiversx/mx-bridge-eth-go/api/shared"
-	"github.com/multiversx/mx-bridge-eth-go/config"
-	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/marshal"
 	"github.com/multiversx/mx-chain-go/api/logs"
 	"github.com/multiversx/mx-chain-go/api/middleware"
 	chainShared "github.com/multiversx/mx-chain-go/api/shared"
 	logger "github.com/multiversx/mx-chain-logger-go"
+	apiErrors "github.com/multiversx/mx-solana-bridge-go/api/errors"
+	"github.com/multiversx/mx-solana-bridge-go/api/groups"
+	"github.com/multiversx/mx-solana-bridge-go/api/shared"
+	"github.com/multiversx/mx-solana-bridge-go/config"
+	"github.com/multiversx/mx-solana-bridge-go/core"
 )
 
 var log = logger.GetOrCreate("api")

@@ -24,7 +24,7 @@
 
 mytestnet/**
 
-#contracts/ethereum-sc
+#contracts/sol-sc
 node_modules
 cache
 artifacts

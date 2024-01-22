@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/builders"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
+	"github.com/multiversx/mx-solana-bridge-go/clients"
 )
 
 const (
@@ -28,8 +28,8 @@ const (
 	getTokenIdForErc20AddressFuncName                         = "getTokenIdForErc20Address"
 	getErc20AddressForTokenIdFuncName                         = "getErc20AddressForTokenId"
 	quorumReachedFuncName                                     = "quorumReached"
-	getLastExecutedEthBatchIdFuncName                         = "getLastExecutedEthBatchId"
-	getLastExecutedEthTxId                                    = "getLastExecutedEthTxId"
+	getLastExecutedSolBatchIdFuncName                         = "getLastExecutedEthBatchId"
+	getLastExecutedSolTxId                                    = "getLastExecutedEthTxId"
 	signedFuncName                                            = "signed"
 	getAllStakedRelayersFuncName                              = "getAllStakedRelayers"
 	isPausedFuncName                                          = "isPaused"
@@ -39,14 +39,14 @@ const (
 type ArgsMXClientDataGetter struct {
 	MultisigContractAddress core.AddressHandler
 	RelayerAddress          core.AddressHandler
-	Proxy                   Proxy
+	Proxy                   clients.Proxy
 	Log                     logger.Logger
 }
 
 type mxClientDataGetter struct {
 	multisigContractAddress core.AddressHandler
 	relayerAddress          core.AddressHandler
-	proxy                   Proxy
+	proxy                   clients.Proxy
 	log                     logger.Logger
 	mutNodeStatus           sync.Mutex
 	wasShardIDFetched       bool
@@ -65,7 +65,7 @@ func NewMXClientDataGetter(args ArgsMXClientDataGetter) (*mxClientDataGetter, er
 		return nil, fmt.Errorf("%w for the RelayerAddress argument", errNilAddressHandler)
 	}
 	if check.IfNil(args.MultisigContractAddress) {
-		return nil, fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
+		return nil, fmt.Errorf("%w for the BridgeProgramAddress argument", errNilAddressHandler)
 	}
 
 	return &mxClientDataGetter{
@@ -248,8 +248,8 @@ func (dataGetter *mxClientDataGetter) GetCurrentBatchAsDataBytes(ctx context.Con
 	return dataGetter.executeQueryFromBuilder(ctx, builder)
 }
 
-// GetTokenIdForErc20Address will assemble a builder and query the proxy for a token id given a specific erc20 address
-func (dataGetter *mxClientDataGetter) GetTokenIdForErc20Address(ctx context.Context, erc20Address []byte) ([][]byte, error) {
+// GetTokenIdForSftAddress will assemble a builder and query the proxy for a token id given a specific sft address
+func (dataGetter *mxClientDataGetter) GetTokenIdForSftAddress(ctx context.Context, erc20Address []byte) ([][]byte, error) {
 	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(getTokenIdForErc20AddressFuncName)
 	builder.ArgBytes(erc20Address)
@@ -257,8 +257,8 @@ func (dataGetter *mxClientDataGetter) GetTokenIdForErc20Address(ctx context.Cont
 	return dataGetter.executeQueryFromBuilder(ctx, builder)
 }
 
-// GetERC20AddressForTokenId will assemble a builder and query the proxy for an erc20 address given a specific token id
-func (dataGetter *mxClientDataGetter) GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
+// GetSftAddressForTokenId will assemble a builder and query the proxy for an sft address given a specific token id
+func (dataGetter *mxClientDataGetter) GetSftAddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
 	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(getErc20AddressForTokenIdFuncName)
 	builder.ArgBytes(tokenId)
@@ -373,16 +373,16 @@ func (dataGetter *mxClientDataGetter) QuorumReached(ctx context.Context, actionI
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
-// GetLastExecutedEthBatchID returns the last executed Ethereum batch ID
-func (dataGetter *mxClientDataGetter) GetLastExecutedEthBatchID(ctx context.Context) (uint64, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder().Function(getLastExecutedEthBatchIdFuncName)
+// GetLastExecutedSolBatchID returns the last executed Solana batch ID
+func (dataGetter *mxClientDataGetter) GetLastExecutedSolBatchID(ctx context.Context) (uint64, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder().Function(getLastExecutedSolBatchIdFuncName)
 
 	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
 }
 
-// GetLastExecutedEthTxID returns the last executed Ethereum deposit ID
-func (dataGetter *mxClientDataGetter) GetLastExecutedEthTxID(ctx context.Context) (uint64, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder().Function(getLastExecutedEthTxId)
+// GetLastExecutedSolTxID returns the last executed Solana deposit ID
+func (dataGetter *mxClientDataGetter) GetLastExecutedSolTxID(ctx context.Context) (uint64, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder().Function(getLastExecutedSolTxId)
 
 	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
 }
@@ -424,7 +424,7 @@ func addBatchInfo(builder builders.VMQueryBuilder, batch *clients.TransferBatch)
 		builder.ArgBytes(dt.FromBytes).
 			ArgBytes(dt.ToBytes).
 			ArgBytes(dt.ConvertedTokenBytes).
-			ArgBigInt(dt.Amount).
+			ArgBigInt(dt.AmountAdjustedToDecimals).
 			ArgInt64(int64(dt.Nonce))
 	}
 }

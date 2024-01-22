@@ -1,8 +1,8 @@
 package facade
 
 import (
-	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-solana-bridge-go/core"
 )
 
 const availableMetrics = "available metrics"

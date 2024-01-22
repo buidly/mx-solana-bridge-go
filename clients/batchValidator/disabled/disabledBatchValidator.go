@@ -3,7 +3,7 @@ package disabled
 import (
 	"context"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-solana-bridge-go/clients"
 )
 
 type disabledBatchValidator struct{}

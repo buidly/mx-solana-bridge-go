@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/multiversx/mx-solana-bridge-go/clients"
 
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	crypto "github.com/multiversx/mx-chain-crypto-go"
@@ -12,7 +13,7 @@ import (
 )
 
 type transactionHandler struct {
-	proxy                   Proxy
+	proxy                   clients.Proxy
 	relayerAddress          core.AddressHandler
 	multisigAddressAsBech32 string
 	nonceTxHandler          NonceTransactionsHandler

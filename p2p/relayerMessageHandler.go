@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/multiversx/mx-bridge-eth-go/core"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/marshal"
@@ -13,9 +12,10 @@ import (
 	"github.com/multiversx/mx-chain-go/common"
 	"github.com/multiversx/mx-chain-go/p2p"
 	"github.com/multiversx/mx-chain-go/process/throttle/antiflood/factory"
+	"github.com/multiversx/mx-solana-bridge-go/core"
 )
 
-const absolutMaxSliceSize = 1024
+const absolutMaxSliceSize = 2048
 
 type relayerMessageHandler struct {
 	marshalizer         marshal.Marshalizer

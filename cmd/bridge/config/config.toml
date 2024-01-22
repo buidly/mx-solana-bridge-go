@@ -1,29 +1,21 @@
-[Eth]
-    Chain = "Ethereum"
-    NetworkAddress = "http://127.0.0.1:8545" # a network address
-    MultisigContractAddress = "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c" # the eth address for the bridge contract
-    SafeContractAddress = "A6504Cc508889bbDBd4B748aFf6EA6b5D0d2684c"
+[Solana]
+    Chain = "Solana"
+    NetworkAddress = "https://api.devnet.solana.com" # a network address
+    WSSNetworkAddress = "wss://api.devnet.solana.com" # a network address
+    BridgeProgramAddress = "DPdETSJD8SxEmydaqarwqWm9Y6v7PHsagejzWsu6ZXge" # the sol address for the bridge contract
+    SafeProgramAddress = "8YA47aGrgcm3gfKKDN798mVj5gyzqaZ9wJd6k3ecMBav"
+    SolanaPrivateKeyFile = "keys/solana.json"
     PrivateKeyFile = "keys/ethereum.sk" # the path to the file containing the relayer eth private key
     GasLimitBase = 350000
     GasLimitForEach = 30000
     IntervalToWaitForTransferInSeconds = 600 #10 minutes
     MaxRetriesOnQuorumReached = 3
     MaxBlocksDelta = 10
-    [Eth.GasStation]
-        Enabled = true
-        URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
-        GasPriceMultiplier = 1000000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 1000000000
-        PollingIntervalInSeconds = 60 # number of seconds between gas price polling
-        RequestRetryDelayInSeconds = 5 # number of seconds of delay after one failed request
-        MaxFetchRetries = 3 # number of fetch retries before printing an error
-        RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the gas price request
-        MaximumAllowedGasPrice = 300 # maximum value allowed for the fetched gas price value
-        # GasPriceSelector available options: "SafeGasPrice", "ProposeGasPrice", "FastGasPrice"
-        GasPriceSelector = "SafeGasPrice" # selector used to provide the gas price
 
 [MultiversX]
     NetworkAddress = "https://devnet-gateway.multiversx.com" # the network address
-    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf" # the multiversx address for the bridge contract
+    NetworkApiAddress = "https://devnet-api.multiversx.com" # the network address
+    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqd53xrnvvxpq7atlgasl7f0c4jzwgqeqes0vq2wv2g2" # the multiversx address for the bridge contract
     PrivateKeyFile = "keys/multiversx.pem" # the path to the pem file containing the relayer multiversx wallet
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
     MaxRetriesOnQuorumReached = 3
@@ -32,8 +24,8 @@
 
     # valid options for ProxyRestAPIEntityType are `observer` and `proxy`. Any other value will trigger an error.
     # `observer` is useful when querying an observer, directly and `proxy` is useful when querying a squad's proxy
-    ProxyRestAPIEntityType = "observer"
-    ProxyFinalityCheck = true
+    ProxyRestAPIEntityType = "proxy"
+    ProxyFinalityCheck = false
     ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
     [MultiversX.GasMap]
         Sign = 8000000
@@ -106,8 +98,8 @@
             Type = "LRU"
         [Antiflood.Topic]
             DefaultMaxMessagesPerSec = 300 # default number of messages per interval for a topic
-            MaxMessages = [{ Topic = "EthereumToMultiversX_join", NumMessagesPerSec = 100 },
-                           { Topic = "EthereumToMultiversX_sign", NumMessagesPerSec = 100 }]
+            MaxMessages = [{ Topic = "SolanaToMultiversX_join", NumMessagesPerSec = 100 },
+                           { Topic = "SolanaToMultiversX_sign", NumMessagesPerSec = 100 }]
 
 [Relayer]
     [Relayer.Marshalizer]
@@ -129,11 +121,11 @@
             MaxOpenFiles = 10
 
 [StateMachine]
-    [StateMachine.EthereumToMultiversX]
+    [StateMachine.SolanaToMultiversX]
         StepDurationInMillis = 12000 #12 seconds
         IntervalForLeaderInSeconds = 120 #2 minutes
 
-    [StateMachine.MultiversXToEthereum]
+    [StateMachine.MultiversXToSolana]
         StepDurationInMillis = 12000 #12 seconds
         IntervalForLeaderInSeconds = 720 #12 minutes
 

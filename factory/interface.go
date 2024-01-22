@@ -3,13 +3,13 @@ package factory
 import (
 	"context"
 
-	"github.com/multiversx/mx-bridge-eth-go/core"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
+	"github.com/multiversx/mx-solana-bridge-go/core"
 )
 
 type dataGetter interface {
-	GetTokenIdForErc20Address(ctx context.Context, erc20Address []byte) ([][]byte, error)
-	GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error)
+	GetTokenIdForSftAddress(ctx context.Context, sftAddress []byte) ([][]byte, error)
+	GetSftAddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error)
 	GetAllStakedRelayers(ctx context.Context) ([][]byte, error)
 	IsInterfaceNil() bool
 }
@@ -22,8 +22,8 @@ type MultiversXRoleProvider interface {
 	IsInterfaceNil() bool
 }
 
-// EthereumRoleProvider defines the operations for the Ethereum role provider
-type EthereumRoleProvider interface {
+// SolanaRoleProvider defines the operations for the Solana role provider
+type SolanaRoleProvider interface {
 	Execute(ctx context.Context) error
 	VerifyEthSignature(signature []byte, messageHash []byte) error
 	IsInterfaceNil() bool
@@ -31,7 +31,7 @@ type EthereumRoleProvider interface {
 
 // Broadcaster defines a component able to communicate with other such instances and manage signatures and other state related data
 type Broadcaster interface {
-	BroadcastSignature(signature []byte, messageHash []byte)
+	BroadcastSignature([]*core.EthereumSignature)
 	BroadcastJoinTopic()
 	SortedPublicKeys() [][]byte
 	RegisterOnTopics() error

@@ -12,8 +12,8 @@ type DataGetter interface {
 	IsInterfaceNil() bool
 }
 
-// EthereumChainInteractor defines an Ethereum client able to respond to requests
-type EthereumChainInteractor interface {
+// SolanaChainInteractor defines an Solana client able to respond to requests
+type SolanaChainInteractor interface {
 	GetRelayers(ctx context.Context) ([]common.Address, error)
 	IsInterfaceNil() bool
 }

@@ -2,8 +2,8 @@ package shared
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/multiversx/mx-bridge-eth-go/config"
-	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-solana-bridge-go/config"
+	"github.com/multiversx/mx-solana-bridge-go/core"
 )
 
 // GroupHandler defines the actions needed to be performed by an gin API group
