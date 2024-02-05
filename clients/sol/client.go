@@ -477,6 +477,9 @@ func (c *client) ExecuteTransfer(
 			Build()
 
 		recent, err := c.solanaRpcClient.GetRecentBlockhash(context.TODO(), rpc.CommitmentFinalized)
+		if err != nil {
+			return nil, err
+		}
 
 		additionalComputeUnitsInstructionData := append(
 			bigIntToLittleEndianBytes(big.NewInt(0).SetUint64(2), 1),
@@ -500,6 +503,9 @@ func (c *client) ExecuteTransfer(
 		fee, err := c.solanaRpcClient.GetFeeForMessage(context.TODO(), tx.Message.ToBase64(), rpc.CommitmentFinalized)
 		if err != nil {
 			return nil, err
+		}
+		if fee == nil || fee.Value == nil {
+			return nil, errNilFee
 		}
 		err = c.checkRelayerFundsForFee(ctx, *fee.Value)
 		if err != nil {
