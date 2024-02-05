@@ -16,7 +16,7 @@ import (
 
 // splits - represent the number of times we split the maximum interval
 // we wait for the transfer confirmation on Solana
-const splits = 10
+const splits = 3
 
 const minRetries = 1
 

@@ -15,4 +15,5 @@ var (
 	errDepositsAndBatchDepositsCountDiffer = errors.New("deposits and batch.DepositsCount differs")
 	errBatchNotInitialized                 = errors.New("batch not initialized")
 	errMintAccountDidNotMatch              = errors.New("Mint Account did not match")
+	errNilFee                              = errors.New("nil fee")
 )

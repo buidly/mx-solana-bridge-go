@@ -15,7 +15,7 @@ import (
 	"github.com/multiversx/mx-solana-bridge-go/core"
 )
 
-const absolutMaxSliceSize = 2048
+const absolutMaxSliceSize = 4096
 
 type relayerMessageHandler struct {
 	marshalizer         marshal.Marshalizer
