@@ -16,7 +16,6 @@ import (
 	ag_binary "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
-	confirm "github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction"
 	"github.com/gagliardetto/solana-go/rpc/ws"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -524,18 +523,7 @@ func (c *client) ExecuteTransfer(
 			return nil, err
 		}
 
-		wsClient, err := ws.Connect(ctx, c.solanaWssClientAddress)
-		if err != nil {
-			return nil, err
-		}
-		sig, err := confirm.SendAndConfirmTransaction(
-			ctx,
-			c.solanaRpcClient,
-			wsClient,
-			tx,
-		)
-		wsClient.Close()
-
+		sig, err := c.sendAndConfirmTransaction(ctx, tx, batch.ID, dt.Nonce)
 		if err != nil {
 			return nil, err
 		}
@@ -545,6 +533,55 @@ func (c *client) ExecuteTransfer(
 	}
 
 	return transferHashes, err
+}
+
+func (c *client) sendAndConfirmTransaction(ctx context.Context, tx *solana.Transaction, batchId uint64, depositId uint64) (solana.Signature, error) {
+
+	c.log.Info("Sending new transaction", "batchID", batchId, "depositID", depositId)
+	opts := rpc.TransactionOpts{
+		SkipPreflight:       false,
+		PreflightCommitment: rpc.CommitmentFinalized,
+	}
+	sig, err := c.solanaRpcClient.SendTransactionWithOpts(
+		ctx,
+		tx,
+		opts,
+	)
+	if err != nil {
+		return sig, err
+	}
+	c.log.Info("New transaction sent", "batchID", batchId, "depositID", depositId, "hash", sig.String())
+
+	c.log.Info("Connecting to WS", "batchID", batchId, "depositID", depositId, "hash", sig.String())
+	wsClient, err := ws.Connect(ctx, c.solanaWssClientAddress)
+	if err != nil {
+		return sig, err
+	}
+	c.log.Info("Successfully connected to WS", "batchID", batchId, "depositID", depositId, "hash", sig.String())
+	defer wsClient.Close()
+
+	c.log.Info("Awaiting for transaction to finish", "batchID", batchId, "depositID", depositId, "hash", sig.String())
+	sub, err := wsClient.SignatureSubscribe(
+		sig,
+		rpc.CommitmentFinalized,
+	)
+	if err != nil {
+		return sig, err
+	}
+	defer sub.Unsubscribe()
+
+	for {
+		got, err := sub.Recv()
+		if err != nil {
+			return sig, err
+		}
+		if got.Value.Err != nil {
+			return sig, fmt.Errorf("transaction confirmation failed: %v", got.Value.Err)
+		} else {
+			c.log.Info("Transaction confirmed", "batchID", batchId, "depositID", depositId, "hash", sig.String())
+			return sig, nil
+		}
+	}
 }
 
 func (c *client) getFirstDepositNonce(batch *clients.TransferBatch) (uint64, error) {
