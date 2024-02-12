@@ -1836,3 +1836,13 @@
 22:36:41.122032 table@remove removed @466
 22:36:41.125183 table@remove removed @463
 22:36:41.125837 table@remove removed @462
+=============== Feb 12, 2024 (EET) ===============
+15:59:21.588903 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+15:59:21.589703 version@stat F·[0 1] S·491B[0B 491B] Sc·[0.00 0.00]
+15:59:21.589730 db@open opening
+15:59:21.589820 journal@recovery F·1
+15:59:21.590276 journal@recovery recovering @473
+15:59:21.594554 version@stat F·[0 1] S·491B[0B 491B] Sc·[0.00 0.00]
+15:59:21.622941 db@janitor F·4 G·1
+15:59:21.622960 db@janitor removing table-472
+15:59:21.623199 db@open done T·33.460334ms

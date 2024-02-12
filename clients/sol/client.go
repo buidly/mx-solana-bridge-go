@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"
@@ -569,17 +570,30 @@ func (c *client) sendAndConfirmTransaction(ctx context.Context, tx *solana.Trans
 		return sig, err
 	}
 	defer sub.Unsubscribe()
+	c.log.Info("Successfully subscribed to WS", "batchID", batchId, "depositID", depositId, "hash", sig.String())
 
+	timeout := 2 * time.Minute
 	for {
-		got, err := sub.Recv()
-		if err != nil {
+		select {
+		case <-ctx.Done():
+			return sig, ctx.Err()
+		case <-time.After(timeout):
+			return sig, fmt.Errorf("transaction subscription timedout. batchID %v, depositId %v, hash, %v", batchId, depositId, sig.String())
+		case resp, ok := <-sub.Response():
+			if !ok {
+				c.log.Info("Transaction subscription closed", "batchID", batchId, "depositID", depositId, "hash", sig.String())
+				return sig, fmt.Errorf("transaction subscription closed. batchID %v, depositId %v, hash, %v", batchId, depositId, sig.String())
+			}
+			if resp.Value.Err != nil {
+				c.log.Error("Transaction finished with error", "batchID", batchId, "depositID", depositId, "hash", sig.String(), resp.Value.Err)
+				return sig, fmt.Errorf("confirmed transaction with execution. batchID %v, depositId %v, hash, %v, error: %v", batchId, depositId, sig.String(), resp.Value.Err)
+			} else {
+				c.log.Info("Transaction finished successfully", "batchID", batchId, "depositID", depositId, "hash", sig.String())
+				return sig, nil
+			}
+		case err := <-sub.Err():
+			c.log.Error("Subscription finished with error", "batchID", batchId, "depositID", depositId, "hash", sig.String(), err)
 			return sig, err
-		}
-		if got.Value.Err != nil {
-			return sig, fmt.Errorf("transaction confirmation failed: %v", got.Value.Err)
-		} else {
-			c.log.Info("Transaction confirmed", "batchID", batchId, "depositID", depositId, "hash", sig.String())
-			return sig, nil
 		}
 	}
 }
