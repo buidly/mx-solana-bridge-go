@@ -5,18 +5,13 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"math"
-	"math/big"
-	"strconv"
-	"sync"
-	"time"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	ag_binary "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
+	confirm "github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction"
 	"github.com/gagliardetto/solana-go/rpc/ws"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -25,6 +20,11 @@ import (
 	"github.com/multiversx/mx-solana-bridge-go/clients/sol/contract/bridge"
 	"github.com/multiversx/mx-solana-bridge-go/clients/sol/contract/tokens_safe"
 	"github.com/multiversx/mx-solana-bridge-go/core"
+	"math"
+	"math/big"
+	"strconv"
+	"sync"
+	"time"
 )
 
 const (
@@ -395,6 +395,15 @@ func (c *client) ExecuteTransfer(
 
 	var transferHashes []string
 
+	c.log.Info("Connecting to WS", "batchID", batch.ID)
+	wsClient, err := ws.Connect(ctx, c.solanaWssClientAddress)
+	if err != nil {
+		c.log.Info("WS failed to connect", "batchID", batch.ID)
+		return nil, err
+	}
+	c.log.Info("WS connected successfully", "batchID", batch.ID)
+	defer wsClient.Close()
+
 	for _, dt := range batch.Deposits {
 
 		if dt.Nonce < depositNonceStart {
@@ -523,9 +532,17 @@ func (c *client) ExecuteTransfer(
 		if err != nil {
 			return nil, err
 		}
+		c.log.Info("Sending transaction", "batchID", batch.ID, "depositID", dt.Nonce)
+		sig, err := confirm.SendAndConfirmTransactionWithTimeout(
+			ctx,
+			c.solanaRpcClient,
+			wsClient,
+			tx,
+			2*time.Minute,
+		)
 
-		sig, err := c.sendAndConfirmTransaction(ctx, tx, batch.ID, dt.Nonce)
 		if err != nil {
+			c.log.Error("Transaction failed", "batchID", batch.ID, "depositID", dt.Nonce, "hash", sig.String(), err)
 			return nil, err
 		}
 
@@ -534,68 +551,6 @@ func (c *client) ExecuteTransfer(
 	}
 
 	return transferHashes, err
-}
-
-func (c *client) sendAndConfirmTransaction(ctx context.Context, tx *solana.Transaction, batchId uint64, depositId uint64) (solana.Signature, error) {
-
-	c.log.Info("Sending new transaction", "batchID", batchId, "depositID", depositId)
-	opts := rpc.TransactionOpts{
-		SkipPreflight:       false,
-		PreflightCommitment: rpc.CommitmentFinalized,
-	}
-	sig, err := c.solanaRpcClient.SendTransactionWithOpts(
-		ctx,
-		tx,
-		opts,
-	)
-	if err != nil {
-		return sig, err
-	}
-	c.log.Info("New transaction sent", "batchID", batchId, "depositID", depositId, "hash", sig.String())
-
-	c.log.Info("Connecting to WS", "batchID", batchId, "depositID", depositId, "hash", sig.String())
-	wsClient, err := ws.Connect(ctx, c.solanaWssClientAddress)
-	if err != nil {
-		return sig, err
-	}
-	c.log.Info("Successfully connected to WS", "batchID", batchId, "depositID", depositId, "hash", sig.String())
-	defer wsClient.Close()
-
-	c.log.Info("Awaiting for transaction to finish", "batchID", batchId, "depositID", depositId, "hash", sig.String())
-	sub, err := wsClient.SignatureSubscribe(
-		sig,
-		rpc.CommitmentFinalized,
-	)
-	if err != nil {
-		return sig, err
-	}
-	defer sub.Unsubscribe()
-	c.log.Info("Successfully subscribed to WS", "batchID", batchId, "depositID", depositId, "hash", sig.String())
-
-	timeout := 2 * time.Minute
-	for {
-		select {
-		case <-ctx.Done():
-			return sig, ctx.Err()
-		case <-time.After(timeout):
-			return sig, fmt.Errorf("transaction subscription timedout. batchID %v, depositId %v, hash, %v", batchId, depositId, sig.String())
-		case resp, ok := <-sub.Response():
-			if !ok {
-				c.log.Info("Transaction subscription closed", "batchID", batchId, "depositID", depositId, "hash", sig.String())
-				return sig, fmt.Errorf("transaction subscription closed. batchID %v, depositId %v, hash, %v", batchId, depositId, sig.String())
-			}
-			if resp.Value.Err != nil {
-				c.log.Error("Transaction finished with error", "batchID", batchId, "depositID", depositId, "hash", sig.String(), resp.Value.Err)
-				return sig, fmt.Errorf("confirmed transaction with execution. batchID %v, depositId %v, hash, %v, error: %v", batchId, depositId, sig.String(), resp.Value.Err)
-			} else {
-				c.log.Info("Transaction finished successfully", "batchID", batchId, "depositID", depositId, "hash", sig.String())
-				return sig, nil
-			}
-		case err := <-sub.Err():
-			c.log.Error("Subscription finished with error", "batchID", batchId, "depositID", depositId, "hash", sig.String(), err)
-			return sig, err
-		}
-	}
 }
 
 func (c *client) getFirstDepositNonce(batch *clients.TransferBatch) (uint64, error) {
